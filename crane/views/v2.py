@@ -2,9 +2,11 @@ from __future__ import absolute_import
 import httplib
 import logging
 import os
+import urlparse
+import time
 from flask import Blueprint, json, current_app, redirect, request
 
-from crane import app_util, exceptions
+from crane import app_util, exceptions, config
 from crane.api import repository
 
 log = logging.getLogger('__name__')
@@ -63,6 +65,12 @@ def name_redirect(relative_path):
     if not base_url.endswith('/'):
         base_url += '/'
 
+    # perform base_url rewrite if relevant CDN config present
+    url_match = current_app.config.get(config.SECTION_CDN, {}).get(config.KEY_URL_MATCH)
+    url_replace = current_app.config.get(config.SECTION_CDN, {}).get(config.KEY_URL_REPLACE)
+    if url_match and url_replace:
+        base_url = base_url.replace(url_match, url_replace)
+
     schema2_data = repository.get_schema2_data_for_repo(name_component)
 
     if 'manifests' in path_component and schema2_data is not None:
@@ -105,6 +113,19 @@ def name_redirect(relative_path):
         else:
             path_component = os.path.join(manifest, '1', identifier)
     url = base_url + path_component
+
+    # add support for CDN auth
+    auth_secret = current_app.config.get(config.SECTION_CDN, {}).get(config.KEY_URL_AUTH_SECRET)
+    if auth_secret:
+        cdn_path = urlparse.urlparse(url).path
+        auth_param = current_app.config.get(config.SECTION_CDN, {}).get(config.KEY_URL_AUTH_PARAM)
+        auth_ttl = current_app.config.get(config.SECTION_CDN, {}).get(config.KEY_URL_AUTH_TTL)
+        auth_exp = int(time.time()) + auth_ttl
+
+        auth_token = app_util.generate_cdn_url_token(cdn_path, auth_secret, auth_exp)
+        auth_qs = '?%s=%s' % (auth_param, auth_token)
+        url += auth_qs
+
     return redirect(url)
 
 

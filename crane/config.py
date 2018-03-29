@@ -25,6 +25,14 @@ KEY_DATA_DIR = 'data_dir'
 KEY_DATA_POLLING_INTERVAL = 'data_dir_polling_interval'
 KEY_ENDPOINT = 'endpoint'
 
+# cdn rewrite settings
+SECTION_CDN = 'cdn'
+KEY_URL_MATCH = 'url_match'
+KEY_URL_REPLACE = 'url_replace'
+KEY_URL_AUTH_SECRET = 'url_auth_secret'
+KEY_URL_AUTH_PARAM = 'url_auth_param'
+KEY_URL_AUTH_TTL = 'url_auth_ttl'
+
 # google search appliance settings
 SECTION_GSA = 'gsa'
 SECTION_SOLR = 'solr'
@@ -92,6 +100,21 @@ def read_config(app, parser):
 
     app.config['DEBUG'] = app.config.get('DEBUG') or \
         os.environ.get(DEBUG_ENV_NAME, '').lower() == 'true'
+
+    # "cdn" support for URL rewriting and token authorization
+    with supress(NoSectionError):
+        section = app.config.setdefault(SECTION_CDN, {})
+
+        # parse general values
+        for key in (KEY_URL_MATCH, KEY_URL_REPLACE, KEY_URL_AUTH_SECRET,
+                    KEY_URL_AUTH_PARAM):
+            with supress(NoOptionError):
+                section[key] = parser.get(SECTION_CDN, key)
+
+        # parse ttl as integer
+        for key in (KEY_URL_AUTH_TTL,):
+            with supress(NoOptionError):
+                section[key] = int(parser.get(SECTION_CDN, key))
 
     # "gsa" (Google Search Appliance) section settings
     with supress(NoSectionError):
