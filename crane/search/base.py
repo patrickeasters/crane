@@ -5,6 +5,7 @@ import socket
 import urllib2
 
 from .. import app_util
+from .. import config
 from .. import exceptions
 
 
@@ -97,8 +98,8 @@ class HTTPBackend(SearchBackend):
                                         504: if the backend takes too long
         """
         try:
-            # one second timeout
-            response = urllib2.urlopen(url, timeout=1)
+            timeout = app.config.get(config.SECTION_SEARCH, {}).get(config.KEY_TIMEOUT)
+            response = urllib2.urlopen(url, timeout=timeout)
         except socket.timeout:
             _logger.error('timeout communicating with backend search service')
             raise exceptions.HTTPError(httplib.GATEWAY_TIMEOUT)

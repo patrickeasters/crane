@@ -43,9 +43,11 @@ KEY_SC_CONTENT_DIR_V1 = 'content_dir_v1'
 KEY_SC_CONTENT_DIR_V2 = 'content_dir_v2'
 KEY_SC_USE_X_SENDFILE = 'use_x_sendfile'
 
-# google search appliance settings
+# search backend settings
+SECTION_SEARCH = 'search'
 SECTION_GSA = 'gsa'
 SECTION_SOLR = 'solr'
+KEY_TIMEOUT = 'timeout'
 KEY_URL = 'url'
 
 
@@ -163,6 +165,15 @@ def read_config(app, parser):
                 elif not os.path.exists(app.config[key_local_content_dir]):
                     _logger.error('The directory specified by "%s" does not exist: "%s". Disabling the serve content feature!' % (key_local_content_dir, app.config[key_local_content_dir])) # noqa
                     app.config[KEY_SC_ENABLE] = False
+
+    # "search" section settings
+    with supress(NoSectionError):
+        section = app.config.setdefault(SECTION_SEARCH, {})
+
+        # parse integers
+        for key in (KEY_TIMEOUT,):
+            with supress(NoOptionError):
+                section[key] = int(parser.get(SECTION_SEARCH, key))
 
     # "gsa" (Google Search Appliance) section settings
     with supress(NoSectionError):
